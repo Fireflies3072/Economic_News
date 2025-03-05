@@ -275,7 +275,7 @@ class CNNCrawler:
         conn.row_factory = sqlite3.Row  # This enables column access by name
         cursor = conn.cursor()
         
-        query = "SELECT title, time, content FROM articles ORDER BY time"
+        query = "SELECT title, time, content FROM articles ORDER BY time DESC"
         
         if number is not None and isinstance(number, int) and number > 0:
             query += f" LIMIT {number}"
@@ -301,7 +301,7 @@ class CNNCrawler:
         conn.row_factory = sqlite3.Row  # Enable column access by name
         cursor = conn.cursor()
         
-        query = "SELECT title, time, content FROM articles WHERE time > ? ORDER BY time"
+        query = "SELECT title, time, content FROM articles WHERE time > ? ORDER BY time DESC"
         cursor.execute(query, (cutoff_time,))
         
         articles = [dict(row) for row in cursor.fetchall()]
