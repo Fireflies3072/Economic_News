@@ -381,11 +381,9 @@ class BackgroundDiscordClient(discord.Client):
                             await asyncio.sleep(2)
                 else:
                     print(f"Channel with ID {channel_id} not found.")
-            asyncio.run_coroutine_threadsafe(_send(), self._loop)
+            asyncio.run_coroutine_threadsafe(_send(), self._loop).result()
 
-        thread = td.Thread(target=_send_message_task, args=(channel_id, content))
-        thread.start()
-        thread.join()
+        self._executor.submit(_send_message_task, channel_id, content).result()
 
 class NewsProcessor:
     def __init__(self):
