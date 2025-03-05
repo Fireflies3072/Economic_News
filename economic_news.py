@@ -225,9 +225,15 @@ class CNNCrawler:
                 (article["title"], article["url"], article_time, article["content"])
             )
             conn.commit()
-            print(f"Article saved to database: {article['title']}")
+            print(f"Article saved: {article['title']}")
         except sqlite3.IntegrityError as e:
-            print(f"Article already exists in database: {article['title']}")
+            # URL already exists, update the other fields
+            cursor.execute(
+                "UPDATE articles SET title = ?, time = ?, content = ? WHERE url = ?",
+                (article["title"], article_time, article["content"], article["url"])
+            )
+            conn.commit()
+            print(f"Article updated: {article['title']}")
         finally:
             conn.close()
     
@@ -245,7 +251,7 @@ class CNNCrawler:
             # Skip if title already exists in database
             if self.title_exists_in_db(title):
                 continue
-            
+            print(title)
             article_item = self.parse_article(url, title)
             if article_item:
                 self.save_article_to_db(article_item)
@@ -348,17 +354,19 @@ class GeminiAnalyzer:
 class BackgroundDiscordClient(discord.Client):
     def __init__(self, token, *args, **kwargs):
         super().__init__(*args, intents=discord.Intents.default(), **kwargs)
+        # Create a new event loop
         self._loop = asyncio.new_event_loop()
         td.Thread(target=self._start_loop, daemon=True).start()
         self._executor = ThreadPoolExecutor(max_workers=1)
-
+        # Connect to Discord
         asyncio.run_coroutine_threadsafe(self.start(token), self._loop)
+        time.sleep(5)
 
     def _start_loop(self):
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
 
-    def stop_async(self):
+    def stop_sync(self):
         asyncio.run_coroutine_threadsafe(self.close(), self._loop)
         self._loop.stop()
 
@@ -373,10 +381,11 @@ class BackgroundDiscordClient(discord.Client):
                             await asyncio.sleep(2)
                 else:
                     print(f"Channel with ID {channel_id} not found.")
+            asyncio.run_coroutine_threadsafe(_send(), self._loop)
 
-            return asyncio.run_coroutine_threadsafe(_send(), self.loop).result()
-
-        return self._executor.submit(_send_message_task, channel_id, content).result()
+        thread = td.Thread(target=_send_message_task, args=(channel_id, content))
+        thread.start()
+        thread.join()
 
 class NewsProcessor:
     def __init__(self):
@@ -452,3 +461,6 @@ class NewsProcessor:
 if __name__ == "__main__":
     processor = NewsProcessor()
     processor.start()
+
+    while True:
+        time.sleep(10000)
